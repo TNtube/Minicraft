@@ -8,13 +8,13 @@ cbuffer CameraData : register(b1) {
 }
 
 struct Input {
-	float3 pos : POSITION0;
-	// float4 color : COLOR0;
+	float3 pos : POSITION;
+	float2 uv : TEXCOORD;
 };
 
 struct Output {
 	float4 pos : SV_POSITION;
-	// float4 color : COLOR;
+	float2 uv : TEXCOORD;
 };
 
 Output main(Input input) {
@@ -22,7 +22,7 @@ Output main(Input input) {
 	output.pos = mul( float4(input.pos, 1.0), model );
 	output.pos = mul( output.pos, view );
 	output.pos = mul( output.pos, projection );
-	// output.color = input.color;
+	output.uv = input.uv;
 
 	return output;
 }

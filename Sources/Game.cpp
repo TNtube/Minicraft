@@ -6,6 +6,7 @@
 #include "Game.h"
 
 #include "PerlinNoise.hpp"
+#include "Engine/Camera.h"
 #include "Engine/Shader.h"
 #include "Engine/Transform.h"
 
@@ -39,9 +40,6 @@ ComPtr<ID3D11InputLayout> inputLayout;
 
 Transform front;
 
-Matrix view;
-Matrix projection;
-
 // Game
 Game::Game() noexcept(false) {
 	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_D32_FLOAT, 2);
@@ -52,6 +50,42 @@ Game::~Game() {
 	delete basicShader;
 	g_inputLayouts.clear();
 }
+
+std::vector<float> CreateFace(Vector3 position, Vector3 right, Vector3 up)
+{
+	return {
+		position.x - right.x + up.x, position.y - right.y + up.y, position.z - right.z + up.z,     0.0f, 1.0f, // top left
+		position.x + right.x + up.x, position.y + right.y + up.y, position.z + right.z + up.z,     1.0f, 1.0f, // top right
+		position.x + right.x - up.x, position.y + right.y - up.y, position.z + right.z - up.z,     1.0f, 0.0f, // bottom right
+		position.x - right.x - up.x, position.y - right.y - up.y, position.z - right.z - up.z,     0.0f, 0.0f  // bottom left
+	};
+}
+
+std::vector<uint32_t> GenerateIndices(int faceCount)
+{
+	std::vector<uint32_t> indices;
+	indices.reserve(faceCount * 6);
+	for (int i = 0; i < faceCount; i++)
+	{
+		uint32_t base = i * 4;
+		indices.push_back(base + 0);
+		indices.push_back(base + 1);
+		indices.push_back(base + 2);
+		
+		indices.push_back(base + 2);
+		indices.push_back(base + 3);
+		indices.push_back(base + 0);
+	}
+	return indices;
+}
+
+void ExtendVector(std::vector<float>& a, const std::vector<float>& b)
+{
+	a.reserve(a.size() + b.size());
+	a.insert(a.end(), b.begin(), b.end());
+}
+
+std::vector<uint32_t> indices;
 
 void Game::Initialize(HWND window, int width, int height) {
 	// Create input devices
@@ -72,24 +106,21 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	const std::vector<D3D11_INPUT_ELEMENT_DESC> InputElementDescs = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 	device->CreateInputLayout(
 		InputElementDescs.data(), InputElementDescs.size(),
 		basicShader->vsBytecode.data(), basicShader->vsBytecode.size(),
 		inputLayout.ReleaseAndGetAddressOf());
 
-	std::vector vertices = {
-		-0.5f,  0.5f, 0.0f,    //  1.0f, 0.0f, 0.0f, 1.0f,
-		 0.5f,  0.5f, 0.0f,    //  0.0f, 1.0f, 0.0f, 1.0f,
-		 0.5f, -0.5f, 0.0f,    //  0.0f, 0.0f, 1.0f, 1.0f,
-		-0.5f, -0.5f, 0.0f,    //  1.0f, 1.0f, 0.0f, 1.0f
-	};
+	std::vector vertices = CreateFace(Vector3(0, 0, -1), Vector3::Up, Vector3::Right);
+	ExtendVector(vertices, CreateFace(Vector3( 0,  0, 1), Vector3::Down, Vector3::Right));
+	ExtendVector(vertices, CreateFace(Vector3( 0,  1, 0), Vector3::Backward, Vector3::Right));
+	ExtendVector(vertices, CreateFace(Vector3( 0, -1, 0), Vector3::Forward, Vector3::Right));
+	ExtendVector(vertices, CreateFace(Vector3( 1,  0, 0), Vector3::Up, Vector3::Backward));
+	ExtendVector(vertices, CreateFace(Vector3(-1,  0, 0), Vector3::Up, Vector3::Forward));
 
-	std::vector indices = {
-		0, 1, 2,
-		2, 3, 0
-	};
+	indices = GenerateIndices(6);
 
 	CD3D11_BUFFER_DESC vboDesc(sizeof(float) * vertices.size(), D3D11_BIND_VERTEX_BUFFER);
 	D3D11_SUBRESOURCE_DATA vboSubResData = {};
@@ -108,7 +139,7 @@ void Game::Initialize(HWND window, int width, int height) {
 	CD3D11_BUFFER_DESC modelDesc(sizeof(ModelData), D3D11_BIND_CONSTANT_BUFFER);
 	device->CreateBuffer(&modelDesc, nullptr, modelConstantBuffer.ReleaseAndGetAddressOf());
 
-	projection = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(80.f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 1000.0f);
+	m_camera = std::make_unique<Camera>(static_cast<float>(width) / static_cast<float>(height), 80.f, 0.1f, 1000.f);
 
 
 	front.position = Vector3(0.0f, 0.0f, -.5f);
@@ -134,8 +165,12 @@ void Game::Update(DX::StepTimer const& timer) {
 	if (kb.Escape)
 		ExitGame();
 
-	view = Matrix::CreateLookAt(Vector3(sin(timer.GetTotalSeconds()), 0.0f, cos(timer.GetTotalSeconds())), Vector3::Zero, Vector3::Up);
+	constexpr float rotateSpeed = 2.0f;
+	m_camera->SetPosition(Vector3(5.0f * sin(timer.GetTotalSeconds()*rotateSpeed), 2.0f,  5.0f * cos(timer.GetTotalSeconds()*rotateSpeed)));
+	// m_camera->SetPosition(Vector3(0, 2, -5));
 
+	m_camera->SetTarget(Vector3(0, 0, 0));
+	
 	auto const pad = m_gamePad->GetState(0);
 }
 
@@ -161,7 +196,7 @@ void Game::Render(DX::StepTimer const& timer) {
 	basicShader->Apply(m_deviceResources.get());
 
 	ID3D11Buffer* vbs[] = { vertexBuffer.Get() };
-	UINT strides[] = { sizeof(float) * 3 };
+	UINT strides[] = { sizeof(float) * 5 };
 	UINT offsets[] = { 0 };
 
 
@@ -171,9 +206,9 @@ void Game::Render(DX::StepTimer const& timer) {
 
 
 	CameraData cd;
-	cd.view = view.Transpose();
+	cd.view = m_camera->GetViewMatrix().Transpose();
 	// md.mView = Matrix::Identity;
-	cd.projection = projection.Transpose();
+	cd.projection = m_camera->GetProjectionMatrix().Transpose();
 	// md.mProjection = Matrix::Identity;
 	ModelData md;
 	md.model = front.GetTransformMatrix().Transpose();
@@ -183,7 +218,7 @@ void Game::Render(DX::StepTimer const& timer) {
 	ID3D11Buffer* cbs[] = {modelConstantBuffer.Get(), cameraConstantBuffer.Get()};
 	context->VSSetConstantBuffers(0, 2, cbs);
 
-	context->DrawIndexed(6, 0, 0);
+	context->DrawIndexed(indices.size(), 0, 0);
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
@@ -216,7 +251,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
-	projection = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(80.f), static_cast<float>(width) / height, 0.1f, 1000.0f);
+	m_camera->SetAspectRatio(static_cast<float>(width) / height);
 }
 
 void Game::OnDeviceLost() {
