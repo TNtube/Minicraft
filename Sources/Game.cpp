@@ -5,6 +5,7 @@
 #include "pch.h"
 #include "Game.h"
 
+#include "Cube.h"
 #include "PerlinNoise.hpp"
 #include "Engine/Camera.h"
 #include "Engine/Shader.h"
@@ -32,13 +33,8 @@ struct CameraData
 // Global stuff
 Shader* basicShader;
 
-ComPtr<ID3D11Buffer> vertexBuffer;
-ComPtr<ID3D11Buffer> indexBuffer;
-ComPtr<ID3D11Buffer> modelConstantBuffer;
-ComPtr<ID3D11Buffer> cameraConstantBuffer;
-ComPtr<ID3D11InputLayout> inputLayout;
-
-Transform front;
+ConstantBuffer<ModelData> modelConstantBuffer;
+ConstantBuffer<CameraData> cameraConstantBuffer;
 
 // Game
 Game::Game() noexcept(false) {
@@ -49,40 +45,6 @@ Game::Game() noexcept(false) {
 Game::~Game() {
 	delete basicShader;
 	g_inputLayouts.clear();
-}
-
-std::vector<float> CreateFace(Vector3 position, Vector3 right, Vector3 up)
-{
-	return {
-		position.x - right.x + up.x, position.y - right.y + up.y, position.z - right.z + up.z,     0.0f, 1.0f, // top left
-		position.x + right.x + up.x, position.y + right.y + up.y, position.z + right.z + up.z,     1.0f, 1.0f, // top right
-		position.x + right.x - up.x, position.y + right.y - up.y, position.z + right.z - up.z,     1.0f, 0.0f, // bottom right
-		position.x - right.x - up.x, position.y - right.y - up.y, position.z - right.z - up.z,     0.0f, 0.0f  // bottom left
-	};
-}
-
-std::vector<uint32_t> GenerateIndices(int faceCount)
-{
-	std::vector<uint32_t> indices;
-	indices.reserve(faceCount * 6);
-	for (int i = 0; i < faceCount; i++)
-	{
-		uint32_t base = i * 4;
-		indices.push_back(base + 0);
-		indices.push_back(base + 1);
-		indices.push_back(base + 2);
-		
-		indices.push_back(base + 2);
-		indices.push_back(base + 3);
-		indices.push_back(base + 0);
-	}
-	return indices;
-}
-
-void ExtendVector(std::vector<float>& a, const std::vector<float>& b)
-{
-	a.reserve(a.size() + b.size());
-	a.insert(a.end(), b.begin(), b.end());
 }
 
 std::vector<uint32_t> indices;
@@ -102,48 +64,14 @@ void Game::Initialize(HWND window, int width, int height) {
 	basicShader = new Shader(L"Basic");
 	basicShader->Create(m_deviceResources.get());
 
-	auto device = m_deviceResources->GetD3DDevice();
+	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
 
-	const std::vector<D3D11_INPUT_ELEMENT_DESC> InputElementDescs = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-	device->CreateInputLayout(
-		InputElementDescs.data(), InputElementDescs.size(),
-		basicShader->vsBytecode.data(), basicShader->vsBytecode.size(),
-		inputLayout.ReleaseAndGetAddressOf());
+	m_cube = std::make_unique<Cube>(m_deviceResources.get());
 
-	std::vector vertices = CreateFace(Vector3(0, 0, -1), Vector3::Up, Vector3::Right);
-	ExtendVector(vertices, CreateFace(Vector3( 0,  0, 1), Vector3::Down, Vector3::Right));
-	ExtendVector(vertices, CreateFace(Vector3( 0,  1, 0), Vector3::Backward, Vector3::Right));
-	ExtendVector(vertices, CreateFace(Vector3( 0, -1, 0), Vector3::Forward, Vector3::Right));
-	ExtendVector(vertices, CreateFace(Vector3( 1,  0, 0), Vector3::Up, Vector3::Backward));
-	ExtendVector(vertices, CreateFace(Vector3(-1,  0, 0), Vector3::Up, Vector3::Forward));
-
-	indices = GenerateIndices(6);
-
-	CD3D11_BUFFER_DESC vboDesc(sizeof(float) * vertices.size(), D3D11_BIND_VERTEX_BUFFER);
-	D3D11_SUBRESOURCE_DATA vboSubResData = {};
-	vboSubResData.pSysMem = vertices.data();
-	device->CreateBuffer(&vboDesc, &vboSubResData, vertexBuffer.ReleaseAndGetAddressOf());
-	
-	CD3D11_BUFFER_DESC iboDesc(sizeof(float) * vertices.size(), D3D11_BIND_INDEX_BUFFER);
-	D3D11_SUBRESOURCE_DATA iboSubResData = {};
-	iboSubResData.pSysMem = indices.data();
-	device->CreateBuffer(&iboDesc, &iboSubResData, indexBuffer.ReleaseAndGetAddressOf());
-
-	CD3D11_BUFFER_DESC cameraDesc(sizeof(CameraData), D3D11_BIND_CONSTANT_BUFFER);
-	device->CreateBuffer(&cameraDesc, nullptr, cameraConstantBuffer.ReleaseAndGetAddressOf());
-
-
-	CD3D11_BUFFER_DESC modelDesc(sizeof(ModelData), D3D11_BIND_CONSTANT_BUFFER);
-	device->CreateBuffer(&modelDesc, nullptr, modelConstantBuffer.ReleaseAndGetAddressOf());
+	modelConstantBuffer.Create(m_deviceResources.get());
+	cameraConstantBuffer.Create(m_deviceResources.get());
 
 	m_camera = std::make_unique<Camera>(static_cast<float>(width) / static_cast<float>(height), 80.f, 0.1f, 1000.f);
-
-
-	front.position = Vector3(0.0f, 0.0f, -.5f);
-	front.position.z += 1;
 }
 
 void Game::Tick() {
@@ -191,19 +119,12 @@ void Game::Render(DX::StepTimer const& timer) {
 	context->OMSetRenderTargets(1, &renderTarget, depthStencil);
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->IASetInputLayout(inputLayout.Get());
+	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 
 	basicShader->Apply(m_deviceResources.get());
 
-	ID3D11Buffer* vbs[] = { vertexBuffer.Get() };
-	UINT strides[] = { sizeof(float) * 5 };
-	UINT offsets[] = { 0 };
 
-
-	// do math here
-	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);
-	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-
+	m_cube->Draw(m_deviceResources.get());
 
 	CameraData cd;
 	cd.view = m_camera->GetViewMatrix().Transpose();
@@ -211,12 +132,12 @@ void Game::Render(DX::StepTimer const& timer) {
 	cd.projection = m_camera->GetProjectionMatrix().Transpose();
 	// md.mProjection = Matrix::Identity;
 	ModelData md;
-	md.model = front.GetTransformMatrix().Transpose();
-	context->UpdateSubresource(cameraConstantBuffer.Get(), 0, nullptr, &cd, 0, 0);
-	context->UpdateSubresource(modelConstantBuffer.Get(), 0, nullptr, &md, 0, 0);
+	md.model = m_cube->transform.GetTransformMatrix().Transpose();
+	modelConstantBuffer.UpdateSubResource(m_deviceResources.get(), md);
+	cameraConstantBuffer.UpdateSubResource(m_deviceResources.get(), cd);
 
-	ID3D11Buffer* cbs[] = {modelConstantBuffer.Get(), cameraConstantBuffer.Get()};
-	context->VSSetConstantBuffers(0, 2, cbs);
+	modelConstantBuffer.Bind(m_deviceResources.get(), 0);
+	cameraConstantBuffer.Bind(m_deviceResources.get(), 1);
 
 	context->DrawIndexed(indices.size(), 0, 0);
 
