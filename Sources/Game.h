@@ -2,6 +2,7 @@
 
 #include "Engine/DeviceResources.h"
 #include "Engine/StepTimer.h"
+#include "Engine/Texture.h"
 
 class Cube;
 class Camera;
@@ -51,4 +52,5 @@ private:
 
 	std::unique_ptr<Camera>					m_camera;
 	std::vector<Cube>						m_cubes;
+	Texture									m_texture;
 };

@@ -36,7 +36,7 @@ Shader* basicShader;
 ConstantBuffer<ModelData> modelConstantBuffer;
 
 // Game
-Game::Game() noexcept(false) {
+Game::Game() noexcept(false) : m_texture(L"terrain") {
 	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_D32_FLOAT, 2);
 	m_deviceResources->RegisterDeviceNotify(this);
 }
@@ -71,10 +71,11 @@ void Game::Initialize(HWND window, int width, int height) {
 			for (int z = -size; z<=size; z++)
 			{
 				auto& cube = m_cubes.emplace_back(m_deviceResources.get());
-				cube.transform.position = Vector3(-i * 2, -z * 2, -y * 2);
+				cube.transform.SetPosition(-i * 2, -z * 2, -y * 2);
 			}
 
 	modelConstantBuffer.Create(m_deviceResources.get());
+	m_texture.Create(m_deviceResources.get());
 
 	m_camera = std::make_unique<Camera>(XMConvertToRadians(80.0f), static_cast<float>(width) / static_cast<float>(height));
 }
@@ -144,6 +145,7 @@ void Game::Render(DX::StepTimer const& timer) {
 	}
 
 	m_camera->ApplyCamera(m_deviceResources.get());
+	m_texture.Apply(m_deviceResources.get());
 
 	context->DrawIndexed(indices.size(), 0, 0);
 

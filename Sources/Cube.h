@@ -12,7 +12,7 @@ public:
 	void Draw(DeviceResources* deviceResources);
 
 private:
-	void AddFace(Vector3 position, Vector3 right, Vector3 up);
+	void AddFace(Vector3 position, Vector3 up, Vector3 right);
 	VertexBuffer<VertexLayout_PositionUV> m_vertexBuffer;
 	IndexBuffer m_indexBuffer;
 };
