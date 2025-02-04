@@ -50,5 +50,5 @@ private:
 	std::unique_ptr<DirectX::Mouse>         m_mouse;
 
 	std::unique_ptr<Camera>					m_camera;
-	std::unique_ptr<Cube> m_cube;
+	std::vector<Cube>						m_cubes;
 };

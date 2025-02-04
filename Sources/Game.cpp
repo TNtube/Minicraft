@@ -65,7 +65,14 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
 
-	m_cube = std::make_unique<Cube>(m_deviceResources.get());
+	int size = 10;
+	for (int i = -size; i<=size; i++)
+		for (int y = -size; y<=size; y++)
+			for (int z = -size; z<=size; z++)
+			{
+				auto& cube = m_cubes.emplace_back(m_deviceResources.get());
+				cube.transform.position = Vector3(-i * 2, -z * 2, -y * 2);
+			}
 
 	modelConstantBuffer.Create(m_deviceResources.get());
 
@@ -127,11 +134,14 @@ void Game::Render(DX::StepTimer const& timer) {
 	basicShader->Apply(m_deviceResources.get());
 
 
-	m_cube->Draw(m_deviceResources.get());
-	ModelData md;
-	md.model = m_cube->transform.GetTransformMatrix().Transpose();
-	modelConstantBuffer.UpdateSubResource(m_deviceResources.get(), md);
-	modelConstantBuffer.Bind(m_deviceResources.get(), 0);
+	for (auto& cube : m_cubes)
+	{
+		ModelData md;
+		md.model = cube.transform.GetTransformMatrix().Transpose();
+		modelConstantBuffer.UpdateSubResource(m_deviceResources.get(), md);
+		modelConstantBuffer.Bind(m_deviceResources.get(), 0);
+		cube.Draw(m_deviceResources.get());
+	}
 
 	m_camera->ApplyCamera(m_deviceResources.get());
 
@@ -139,8 +149,6 @@ void Game::Render(DX::StepTimer const& timer) {
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
-
-	m_cube->transform.position = Vector3::Forward * 3;
 }
 
 

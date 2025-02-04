@@ -46,8 +46,8 @@ void Camera::Update(float dt, Keyboard::State kb, Mouse* mouse) {
 			camPos += Vector3::TransformNormal(Vector3::Up, im) * dy * camSpeedMouse * dt;
 
 		} else if (mstate.leftButton) {
-			camRot *= Quaternion::CreateFromAxisAngle(Vector3::Up, -dx * camSpeedRot * dt);
-			camRot *= Quaternion::CreateFromAxisAngle(Vector3::Right, -dy * camSpeedRot * dt);
+			camRot *= Quaternion::CreateFromAxisAngle(Vector3::TransformNormal(Vector3::Up, im), -dx * camSpeedRot * dt);
+			camRot *= Quaternion::CreateFromAxisAngle(Vector3::TransformNormal(Vector3::Right, im), -dy * camSpeedRot * dt);
 		} else {
 			mouse->SetMode(Mouse::MODE_ABSOLUTE);
 		}
