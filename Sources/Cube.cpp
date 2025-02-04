@@ -1,16 +1,20 @@
 #include "pch.h"
 #include "Cube.h"
 
-void Cube::AddFace(Vector3 position, Vector3 right, Vector3 up)
+Vector4 ToVec4(Vector3 v)
 {
-	m_vertexBuffer.PushVertex({{position.x - right.x + up.x, position.y - right.y + up.y, position.z - right.z + up.z, 1.0f},     {0.0f, 1.0f}}); // top left
-	m_vertexBuffer.PushVertex({{position.x + right.x + up.x, position.y + right.y + up.y, position.z + right.z + up.z, 1.0f},     {1.0f, 1.0f}}); // top right
-	m_vertexBuffer.PushVertex({{position.x + right.x - up.x, position.y + right.y - up.y, position.z + right.z - up.z, 1.0f},     {1.0f, 0.0f}}); // bottom right
-	uint32_t baseIndex = m_vertexBuffer.PushVertex({{position.x - right.x - up.x, position.y - right.y - up.y, position.z - right.z - up.z, 1.0f},     {0.0f, 0.0f}}); // bottom left
+	return {v.x, v.y, v.z, 1.0f};
+}
 
-	baseIndex -= 3;
-	m_indexBuffer.PushTriangle(baseIndex + 0, baseIndex + 1, baseIndex + 2);
-	m_indexBuffer.PushTriangle(baseIndex + 2, baseIndex + 3, baseIndex + 0);
+void Cube::AddFace(Vector3 position, Vector3 up, Vector3 right)
+{
+	auto a = m_vertexBuffer.PushVertex({ToVec4(position),     {0.0f, 0.0f}});
+	auto b = m_vertexBuffer.PushVertex({ToVec4(position + up),     {0.0f, 1.0f}});
+	auto c = m_vertexBuffer.PushVertex({ToVec4(position+ right),     {1.0f, 0.0f}});
+	auto d = m_vertexBuffer.PushVertex({ToVec4(position+ up + right),     {1.0f, 1.0f}});
+
+	m_indexBuffer.PushTriangle(a, b, c);
+	m_indexBuffer.PushTriangle(c, b, d);
 
 }
 
@@ -19,12 +23,12 @@ Cube::Cube(DeviceResources* deviceResources)
 	std::vector<VertexLayout_PositionUV> vertices;
 	std::vector<uint32_t> indices;
 
-	AddFace(Vector3(0, 0, 1) , Vector3::Right, Vector3::Up);
-	AddFace(Vector3( 0,  0, -1), Vector3::Right, Vector3::Down);
-	AddFace(Vector3( 0,  -1, 0), Vector3::Right, Vector3::Backward);
-	AddFace(Vector3( 0, 1, 0), Vector3::Right, Vector3::Forward);
-	AddFace(Vector3( -1,  0, 0), Vector3::Backward, Vector3::Up);
-	AddFace(Vector3(1,  0, 0), Vector3::Forward, Vector3::Up);
+	AddFace({-0.5f, -0.5f, 0.5f}, Vector3::Up, Vector3::Right);
+	AddFace({0.5f,  -0.5f, 0.5f}, Vector3::Up, Vector3::Forward);
+	AddFace({0.5f,  -0.5f, -0.5f}, Vector3::Up, Vector3::Left);
+	AddFace({-0.5f,  -0.5f, -0.5f}, Vector3::Up, Vector3::Backward);
+	AddFace({-0.5f, 0.5f, 0.5f}, Vector3::Forward, Vector3::Right);
+	AddFace({-0.5f,  -0.5f, -0.5f}, Vector3::Backward, Vector3::Right);
 	
 	m_vertexBuffer.Create(deviceResources);
 	m_indexBuffer.Create(deviceResources);

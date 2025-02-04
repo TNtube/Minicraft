@@ -34,7 +34,6 @@ struct CameraData
 Shader* basicShader;
 
 ConstantBuffer<ModelData> modelConstantBuffer;
-ConstantBuffer<CameraData> cameraConstantBuffer;
 
 // Game
 Game::Game() noexcept(false) {
@@ -69,9 +68,8 @@ void Game::Initialize(HWND window, int width, int height) {
 	m_cube = std::make_unique<Cube>(m_deviceResources.get());
 
 	modelConstantBuffer.Create(m_deviceResources.get());
-	cameraConstantBuffer.Create(m_deviceResources.get());
 
-	m_camera = std::make_unique<Camera>(static_cast<float>(width) / static_cast<float>(height), 80.f, 0.1f, 1000.f);
+	m_camera = std::make_unique<Camera>(XMConvertToRadians(80.0f), static_cast<float>(width) / static_cast<float>(height));
 }
 
 void Game::Tick() {
@@ -86,18 +84,23 @@ void Game::Tick() {
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer) {
 	auto const kb = m_keyboard->GetState();
-	auto const ms = m_mouse->GetState();
+	// auto const ms = m_mouse->GetState();
+
+	
 	
 	// add kb/mouse interact here
 	
 	if (kb.Escape)
 		ExitGame();
 
-	constexpr float rotateSpeed = 2.0f;
-	m_camera->SetPosition(Vector3(5.0f * sin(timer.GetTotalSeconds()*rotateSpeed), 2.0f,  5.0f * cos(timer.GetTotalSeconds()*rotateSpeed)));
-	// m_camera->SetPosition(Vector3(0, 2, -5));
 
-	m_camera->SetTarget(Vector3(0, 0, 0));
+	m_camera->Update(timer.GetElapsedSeconds(), kb, m_mouse.get());
+
+	// constexpr float rotateSpeed = 2.0f;
+	// m_camera->SetPosition(Vector3(5.0f * sin(timer.GetTotalSeconds()*rotateSpeed), 2.0f,  5.0f * cos(timer.GetTotalSeconds()*rotateSpeed)));
+	// // m_camera->SetPosition(Vector3(0, 2, -5));
+	//
+	// m_camera->SetTarget(Vector3(0, 0, 0));
 	
 	auto const pad = m_gamePad->GetState(0);
 }
@@ -125,24 +128,19 @@ void Game::Render(DX::StepTimer const& timer) {
 
 
 	m_cube->Draw(m_deviceResources.get());
-
-	CameraData cd;
-	cd.view = m_camera->GetViewMatrix().Transpose();
-	// md.mView = Matrix::Identity;
-	cd.projection = m_camera->GetProjectionMatrix().Transpose();
-	// md.mProjection = Matrix::Identity;
 	ModelData md;
 	md.model = m_cube->transform.GetTransformMatrix().Transpose();
 	modelConstantBuffer.UpdateSubResource(m_deviceResources.get(), md);
-	cameraConstantBuffer.UpdateSubResource(m_deviceResources.get(), cd);
-
 	modelConstantBuffer.Bind(m_deviceResources.get(), 0);
-	cameraConstantBuffer.Bind(m_deviceResources.get(), 1);
+
+	m_camera->ApplyCamera(m_deviceResources.get());
 
 	context->DrawIndexed(indices.size(), 0, 0);
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
+
+	m_cube->transform.position = Vector3::Forward * 3;
 }
 
 
@@ -172,7 +170,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
-	m_camera->SetAspectRatio(static_cast<float>(width) / height);
+	m_camera->UpdateAspectRatio(static_cast<float>(width) / height);
 }
 
 void Game::OnDeviceLost() {
