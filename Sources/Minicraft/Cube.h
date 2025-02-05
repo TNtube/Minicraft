@@ -4,6 +4,12 @@
 #include "Engine/Buffers.h"
 #include "Minicraft/Block.h"
 
+struct ModelData
+{
+	Matrix model;
+};
+
+
 class Cube
 {
 public:

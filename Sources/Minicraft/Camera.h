@@ -30,5 +30,7 @@ public:
 	void UpdateAspectRatio(float aspectRatio);
 	void Update(float dt, DirectX::Keyboard::State kb, DirectX::Mouse* mouse);
 
+	void SetPosition(Vector3 pos) { camPos = pos; }
+
 	void ApplyCamera(DeviceResources* deviceRes);
 };

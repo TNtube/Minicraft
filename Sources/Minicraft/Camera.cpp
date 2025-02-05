@@ -27,13 +27,16 @@ void Camera::Update(float dt, Keyboard::State kb, Mouse* mouse) {
 	Mouse::State mstate = mouse->GetState();
 	const Matrix im = view.Invert();
 
+	Vector3 delta;
 	// TP: deplacement par clavier
-	if (kb.Z) camPos += Vector3::TransformNormal(Vector3::Forward, im) * camSpeed * dt;
-	if (kb.S) camPos += Vector3::TransformNormal(Vector3::Backward, im) * camSpeed * dt;
-	if (kb.Q) camPos += Vector3::TransformNormal(Vector3::Left, im) * camSpeed * dt;
-	if (kb.D) camPos += Vector3::TransformNormal(Vector3::Right, im) * camSpeed * dt;
-	if (kb.A) camPos += Vector3::TransformNormal(Vector3::Down, im) * camSpeed * dt;
-	if (kb.E) camPos += Vector3::TransformNormal(Vector3::Up, im) * camSpeed * dt;
+	if (kb.Z) delta += Vector3::Forward;
+	if (kb.S) delta += Vector3::Backward;
+	if (kb.Q) delta += Vector3::Left;
+	if (kb.D) delta += Vector3::Right;
+	if (kb.A) delta += Vector3::Down;
+	if (kb.E) delta += Vector3::Up;
+
+	camPos += Vector3::TransformNormal(delta, im) * camSpeed * dt;
 
 	// astuce: Vector3::TransformNormal(vecteur, im); transforme un vecteur de l'espace cameravers l'espace monde
 

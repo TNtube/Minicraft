@@ -18,12 +18,6 @@ using namespace DirectX::SimpleMath;
 
 using Microsoft::WRL::ComPtr;
 
-
-struct ModelData
-{
-	Matrix model;
-};
-
 struct CameraData
 {
 	Matrix view;
@@ -33,10 +27,8 @@ struct CameraData
 // Global stuff
 Shader* basicShader;
 
-ConstantBuffer<ModelData> modelConstantBuffer;
-
 // Game
-Game::Game() noexcept(false) : m_texture(L"terrain") {
+Game::Game() noexcept(false) : m_texture(L"terrain"), m_world({16, 16, 16}) {
 	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT, 2);
 	m_deviceResources->RegisterDeviceNotify(this);
 }
@@ -64,20 +56,12 @@ void Game::Initialize(HWND window, int width, int height) {
 	basicShader->Create(m_deviceResources.get());
 
 	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
-
-	int size = 1;
-	for (int i = -size; i<=size; i++)
-		for (int y = -size; y<=size; y++)
-			for (int z = -size; z<=size; z++)
-			{
-				Cube& cube = m_cubes.emplace_back(GRASS, Vector3{-i * 2.0f, -z * 2.0f, -y * 2.0f});
-				cube.Create(m_deviceResources.get());
-			}
-
-	modelConstantBuffer.Create(m_deviceResources.get());
 	m_texture.Create(m_deviceResources.get());
+	m_world.Generate(m_deviceResources.get());
 
 	m_camera = std::make_unique<Camera>(XMConvertToRadians(80.0f), static_cast<float>(width) / static_cast<float>(height));
+
+	m_camera->SetPosition({0, 20, 10});
 }
 
 void Game::Tick() {
@@ -133,16 +117,7 @@ void Game::Render(DX::StepTimer const& timer) {
 	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 
 	basicShader->Apply(m_deviceResources.get());
-
-
-	for (auto& cube : m_cubes)
-	{
-		ModelData md;
-		md.model = cube.transform.GetTransformMatrix().Transpose();
-		modelConstantBuffer.UpdateSubResource(m_deviceResources.get(), md);
-		modelConstantBuffer.Bind(m_deviceResources.get(), 0);
-		cube.Draw(m_deviceResources.get());
-	}
+	m_world.Draw(m_deviceResources.get());
 
 	m_camera->ApplyCamera(m_deviceResources.get());
 	m_texture.Apply(m_deviceResources.get());

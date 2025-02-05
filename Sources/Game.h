@@ -3,6 +3,7 @@
 #include "Engine/DeviceResources.h"
 #include "Engine/StepTimer.h"
 #include "Engine/Texture.h"
+#include "Minicraft/World.h"
 
 class Cube;
 class Camera;
@@ -51,6 +52,6 @@ private:
 	std::unique_ptr<DirectX::Mouse>         m_mouse;
 
 	std::unique_ptr<Camera>					m_camera;
-	std::vector<Cube>						m_cubes;
+	World									m_world;
 	Texture									m_texture;
 };
