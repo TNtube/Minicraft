@@ -9,6 +9,6 @@ struct Input {
 float4 main(Input input) : SV_TARGET {
     // return float4(1, 0, 1, 1);
 
-    float4 color = tex.Sample(samplerState, input.uv / 16);
+    float4 color = tex.Sample(samplerState, input.uv);
     return color;
 }

@@ -5,9 +5,9 @@
 #include "pch.h"
 #include "Game.h"
 
-#include "Cube.h"
+#include "Minicraft/Cube.h"
 #include "PerlinNoise.hpp"
-#include "Engine/Camera.h"
+#include "Minicraft/Camera.h"
 #include "Engine/Shader.h"
 #include "Engine/Transform.h"
 
@@ -37,7 +37,7 @@ ConstantBuffer<ModelData> modelConstantBuffer;
 
 // Game
 Game::Game() noexcept(false) : m_texture(L"terrain") {
-	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_D32_FLOAT, 2);
+	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT, 2);
 	m_deviceResources->RegisterDeviceNotify(this);
 }
 
@@ -65,13 +65,13 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
 
-	int size = 10;
+	int size = 1;
 	for (int i = -size; i<=size; i++)
 		for (int y = -size; y<=size; y++)
 			for (int z = -size; z<=size; z++)
 			{
-				auto& cube = m_cubes.emplace_back(m_deviceResources.get());
-				cube.transform.SetPosition(-i * 2, -z * 2, -y * 2);
+				Cube& cube = m_cubes.emplace_back(GRASS, Vector3{-i * 2.0f, -z * 2.0f, -y * 2.0f});
+				cube.Create(m_deviceResources.get());
 			}
 
 	modelConstantBuffer.Create(m_deviceResources.get());
