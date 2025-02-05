@@ -5,7 +5,7 @@
 #include "Engine/Texture.h"
 #include "Minicraft/World.h"
 
-class Cube;
+class Chunk;
 class Camera;
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.

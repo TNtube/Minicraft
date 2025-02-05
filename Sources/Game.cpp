@@ -5,7 +5,7 @@
 #include "pch.h"
 #include "Game.h"
 
-#include "Minicraft/Cube.h"
+#include "Minicraft/Chunk.h"
 #include "PerlinNoise.hpp"
 #include "Minicraft/Camera.h"
 #include "Engine/Shader.h"
