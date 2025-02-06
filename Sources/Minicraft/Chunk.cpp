@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Chunk.h"
+#include "World.h"
 
 Vector4 ToVec4(Vector3 v)
 {
@@ -22,35 +23,56 @@ void Chunk::AddFace(Vector3 position, Vector3 up, Vector3 right, Vector2 textCoo
 
 bool Chunk::ShouldRenderFace(Vector3 position, Vector3 direction) const
 {
-	Vector3 next = position + direction;
-	int nx = static_cast<int>(next.x);
-	int ny = static_cast<int>(next.y);
-	int nz = static_cast<int>(next.z);
+	Vector3 next = {position.x + direction.x, position.y + direction.y, position.z + direction.z};
+	// Vector3 nextLocal = next - m_chunkPosition * CHUNK_SIZE;
+	Vector3 nextLocal = {
+		next.x - (m_chunkPosition.x * CHUNK_SIZE),
+			next.y - (m_chunkPosition.y * CHUNK_SIZE),
+		next.z - (m_chunkPosition.z * CHUNK_SIZE)
+	};
+	int nx = static_cast<int>(nextLocal.x);
+	int ny = static_cast<int>(nextLocal.y);
+	int nz = static_cast<int>(nextLocal.z);
 
-	if (nx < 0 || ny < 0 || nz < 0) return true;
-	if (nx >= m_dimension.x || ny >= m_dimension.y || nz >= m_dimension.z) return true;
+	if (nx < 0 || ny < 0 || nz < 0 || nx >= CHUNK_SIZE || ny >= CHUNK_SIZE || nz >= CHUNK_SIZE)
+	{
+		Vector3 nextChunk = World::WorldToChunkPosition(next);
+		Chunk* chunk = m_world->GetChunk(nextChunk);
+		if (chunk == nullptr)
+			return true;
 
-	BlockId nextBlock = m_blocks[nx + ny * static_cast<int>(m_dimension.x) + nz * static_cast<int>(m_dimension.x) * static_cast<int>(m_dimension.y)];
+		return chunk->ShouldRenderFace(next, Vector3::Zero);
+	}
+
+	BlockId nextBlock = m_blocks[nx + ny * CHUNK_SIZE + nz * CHUNK_SIZE * CHUNK_SIZE];
 	return nextBlock == EMPTY;
 }
 
 
-Chunk::Chunk(Vector3 position, Vector3 dimension) : m_chunkPosition(position), m_dimension(dimension)
+Chunk::Chunk() : m_world(nullptr), m_blocks(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE, EMPTY)
 {
 }
 
-void Chunk::SetBlocks(const std::vector<BlockId>& blocks)
+Chunk::Chunk(World* world, Vector3 position)
+	:	m_world(world), m_chunkPosition(position),
+		m_blocks(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE, EMPTY)
 {
-	if (blocks.size() != m_dimension.x * m_dimension.y * m_dimension.z)
-	{
-		throw std::runtime_error("Invalid block count");
-	}
+}
 
-	m_blocks = blocks;
+BlockId* Chunk::GetBlock(Vector3 worldPosition)
+{
+	Vector3 localPosition = World::WorldToLocalPosition(worldPosition);
+	return &m_blocks[static_cast<int>(localPosition.x)
+					+ static_cast<int>(localPosition.y) * CHUNK_SIZE
+					+ static_cast<int>(localPosition.z) * CHUNK_SIZE * CHUNK_SIZE];
 }
 
 void Chunk::Create(DeviceResources* deviceResources)
 {
+	m_hasBlocks = std::any_of(m_blocks.begin(), m_blocks.end(), [](BlockId id) { return id != EMPTY; });
+	if (!m_hasBlocks)
+		return;
+	
 	std::vector<VertexLayout_PositionUV> vertices;
 	std::vector<uint32_t> indices;
 
@@ -61,10 +83,12 @@ void Chunk::Create(DeviceResources* deviceResources)
 		if (blockId == EMPTY) continue;
 
 		Vector3 blockPosition = {
-			static_cast<float>(i % static_cast<int>(m_dimension.x)),
-			static_cast<float>((i / static_cast<int>(m_dimension.x)) % static_cast<int>(m_dimension.y)),
-			static_cast<float>(i / (static_cast<int>(m_dimension.x) * static_cast<int>(m_dimension.y)))
+			static_cast<float>(i % CHUNK_SIZE),
+			static_cast<float>((i / CHUNK_SIZE) % CHUNK_SIZE),
+			static_cast<float>(i / (CHUNK_SIZE * CHUNK_SIZE))
 		};
+
+		blockPosition += m_chunkPosition * CHUNK_SIZE;
 		
 		const BlockData& data = BlockData::Get(blockId);
 
@@ -106,6 +130,9 @@ void Chunk::Create(DeviceResources* deviceResources)
 
 void Chunk::Draw(DeviceResources* deviceResources)
 {
+	if (!m_hasBlocks)
+		return;
+
 	auto d3dContext = deviceResources->GetD3DDeviceContext();
 
 	m_vertexBuffer.Bind(deviceResources);

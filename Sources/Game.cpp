@@ -61,7 +61,7 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	m_camera = std::make_unique<Camera>(XMConvertToRadians(80.0f), static_cast<float>(width) / static_cast<float>(height));
 
-	m_camera->SetPosition({0, 20, 10});
+	m_camera->SetPosition({0, 100, 10});
 }
 
 void Game::Tick() {

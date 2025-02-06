@@ -9,15 +9,21 @@ struct ModelData
 	Matrix model;
 };
 
+#define CHUNK_SIZE 16
+
+class World;
+
 
 class Chunk
 {
 public:
 	Transform transform;
 
-	Chunk(Vector3 position, Vector3 dimension);
+	Chunk();
 
-	void SetBlocks(const std::vector<BlockId>& blocks);
+	Chunk(World* world, Vector3 position);
+
+	BlockId* GetBlock(Vector3 worldPosition);
 
 	
 	void Create(DeviceResources* deviceResources);
@@ -29,6 +35,9 @@ private:
 
 	bool ShouldRenderFace(Vector3 position, Vector3 direction) const;
 
+	World* m_world;
+
+	bool m_hasBlocks = false;
 	
 	VertexBuffer<VertexLayout_PositionUV> m_vertexBuffer;
 	IndexBuffer m_indexBuffer;
@@ -36,5 +45,4 @@ private:
 	Vector3 m_chunkPosition;
 
 	std::vector<BlockId> m_blocks;
-	Vector3 m_dimension;
 };
