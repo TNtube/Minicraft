@@ -54,4 +54,6 @@ private:
 	std::unique_ptr<Camera>					m_camera;
 	World									m_world;
 	Texture									m_texture;
+
+	ComPtr<ID3D11BlendState> Transparency;
 };

@@ -24,6 +24,7 @@ public:
 	Chunk(World* world, Vector3 position);
 
 	BlockId* GetBlock(Vector3 worldPosition);
+	const BlockId* GetBlock(Vector3 worldPosition) const;
 
 	
 	void Create(DeviceResources* deviceResources);
@@ -33,7 +34,7 @@ private:
 	friend class World;
 	void AddFace(Vector3 position, Vector3 up, Vector3 right, Vector2 textCoord);
 
-	bool ShouldRenderFace(Vector3 position, Vector3 direction) const;
+	bool ShouldRenderFace(Vector3 position, Vector3 direction, const BlockData& data) const;
 
 	World* m_world;
 

@@ -62,6 +62,27 @@ void Game::Initialize(HWND window, int width, int height) {
 	m_camera = std::make_unique<Camera>(XMConvertToRadians(80.0f), static_cast<float>(width) / static_cast<float>(height));
 
 	m_camera->SetPosition({0, 100, 10});
+
+
+	D3D11_BLEND_DESC blendDesc;
+	ZeroMemory( &blendDesc, sizeof(blendDesc) );
+
+	D3D11_RENDER_TARGET_BLEND_DESC rtbd;
+	ZeroMemory( &rtbd, sizeof(rtbd) );
+
+	rtbd.BlendEnable			= true;
+	rtbd.SrcBlend				= D3D11_BLEND_SRC_COLOR;
+	rtbd.DestBlend				= D3D11_BLEND_BLEND_FACTOR;
+	rtbd.BlendOp				= D3D11_BLEND_OP_ADD;
+	rtbd.SrcBlendAlpha			= D3D11_BLEND_ONE;
+	rtbd.DestBlendAlpha			= D3D11_BLEND_ZERO;
+	rtbd.BlendOpAlpha			= D3D11_BLEND_OP_ADD;
+	rtbd.RenderTargetWriteMask	= D3D10_COLOR_WRITE_ENABLE_ALL;
+
+	blendDesc.AlphaToCoverageEnable = false;
+	blendDesc.RenderTarget[0] = rtbd;
+
+	m_deviceResources->GetD3DDevice()->CreateBlendState(&blendDesc, Transparency.GetAddressOf());
 }
 
 void Game::Tick() {

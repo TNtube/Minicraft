@@ -21,31 +21,21 @@ void Chunk::AddFace(Vector3 position, Vector3 up, Vector3 right, Vector2 textCoo
 	m_indexBuffer.PushTriangle(c, b, d);
 }
 
-bool Chunk::ShouldRenderFace(Vector3 position, Vector3 direction) const
+bool Chunk::ShouldRenderFace(Vector3 position, Vector3 direction, const BlockData& data) const
 {
 	Vector3 next = {position.x + direction.x, position.y + direction.y, position.z + direction.z};
-	// Vector3 nextLocal = next - m_chunkPosition * CHUNK_SIZE;
-	Vector3 nextLocal = {
-		next.x - (m_chunkPosition.x * CHUNK_SIZE),
-			next.y - (m_chunkPosition.y * CHUNK_SIZE),
-		next.z - (m_chunkPosition.z * CHUNK_SIZE)
-	};
-	int nx = static_cast<int>(nextLocal.x);
-	int ny = static_cast<int>(nextLocal.y);
-	int nz = static_cast<int>(nextLocal.z);
 
-	if (nx < 0 || ny < 0 || nz < 0 || nx >= CHUNK_SIZE || ny >= CHUNK_SIZE || nz >= CHUNK_SIZE)
-	{
-		Vector3 nextChunk = World::WorldToChunkPosition(next);
-		Chunk* chunk = m_world->GetChunk(nextChunk);
-		if (chunk == nullptr)
-			return true;
+	auto chunkPosition = World::WorldToChunkPosition(next);
+	auto chunk = chunkPosition == m_chunkPosition ? this : m_world->GetChunk(chunkPosition);
 
-		return chunk->ShouldRenderFace(next, Vector3::Zero);
-	}
+	if (chunk == nullptr)
+		return true;
 
-	BlockId nextBlock = m_blocks[nx + ny * CHUNK_SIZE + nz * CHUNK_SIZE * CHUNK_SIZE];
-	return nextBlock == EMPTY;
+	BlockId nextBlock = *chunk->GetBlock(next);
+	const BlockData* nextData = &BlockData::Get(nextBlock);
+
+	bool nextTransparent = !data.transparent && nextData->transparent;
+	return nextTransparent || nextBlock == EMPTY;
 }
 
 
@@ -61,7 +51,14 @@ Chunk::Chunk(World* world, Vector3 position)
 
 BlockId* Chunk::GetBlock(Vector3 worldPosition)
 {
-	Vector3 localPosition = World::WorldToLocalPosition(worldPosition);
+	Vector3 localPosition = worldPosition - m_chunkPosition * CHUNK_SIZE;
+	return &m_blocks[static_cast<int>(localPosition.x)
+					+ static_cast<int>(localPosition.y) * CHUNK_SIZE
+					+ static_cast<int>(localPosition.z) * CHUNK_SIZE * CHUNK_SIZE];
+}
+const BlockId* Chunk::GetBlock(Vector3 worldPosition) const
+{
+	Vector3 localPosition = worldPosition - m_chunkPosition * CHUNK_SIZE;
 	return &m_blocks[static_cast<int>(localPosition.x)
 					+ static_cast<int>(localPosition.y) * CHUNK_SIZE
 					+ static_cast<int>(localPosition.z) * CHUNK_SIZE * CHUNK_SIZE];
@@ -103,17 +100,17 @@ void Chunk::Create(DeviceResources* deviceResources)
 		Vector3 top =		Vector3{-0.5f,  0.5f,  0.5f};
 		Vector3 bottom =	Vector3{-0.5f, -0.5f, -0.5f};
 
-		if (ShouldRenderFace(blockPosition, Vector3::Backward))
+		if (ShouldRenderFace(blockPosition, Vector3::Backward, data))
 			AddFace(blockPosition + back, Vector3::Up, Vector3::Right, sideTexCoord);
-		if (ShouldRenderFace(blockPosition, Vector3::Right))
+		if (ShouldRenderFace(blockPosition, Vector3::Right, data))
 			AddFace(blockPosition + right, Vector3::Up, Vector3::Forward, sideTexCoord);
-		if (ShouldRenderFace(blockPosition, Vector3::Forward))
+		if (ShouldRenderFace(blockPosition, Vector3::Forward, data))
 			AddFace(blockPosition + front, Vector3::Up, Vector3::Left, sideTexCoord);
-		if (ShouldRenderFace(blockPosition, Vector3::Left))
+		if (ShouldRenderFace(blockPosition, Vector3::Left, data))
 			AddFace(blockPosition + left, Vector3::Up, Vector3::Backward, sideTexCoord);
-		if (ShouldRenderFace(blockPosition, Vector3::Up))
+		if (ShouldRenderFace(blockPosition, Vector3::Up, data))
 			AddFace(blockPosition + top, Vector3::Forward, Vector3::Right, topTexCoord);
-		if (ShouldRenderFace(blockPosition, Vector3::Down))
+		if (ShouldRenderFace(blockPosition, Vector3::Down, data))
 			AddFace(blockPosition + bottom, Vector3::Backward, Vector3::Right, bottomTexCoord);
 		
 		// AddFace({-0.5f, -0.5f, 0.5f}, Vector3::Up, Vector3::Right, sideTexCoord);					// front

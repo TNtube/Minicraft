@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "World.h"
 
+#include <iostream>
+#include <PerlinNoise.hpp>
+
 #include "Block.h"
 #include "Chunk.h"
 
@@ -58,31 +61,53 @@ void World::Generate(DeviceResources* deviceResources)
 
 	constexpr int chunkCount = 8;
 
+	siv::PerlinNoise perlin(1234);
+
 	for (int x = -chunkCount * CHUNK_SIZE; x < chunkCount * CHUNK_SIZE; ++x)
 	{
 		for (int z = -chunkCount * CHUNK_SIZE; z < chunkCount * CHUNK_SIZE; ++z)
 		{
-			for (int y = 0; y < CHUNK_Y_COUNT * CHUNK_SIZE; ++y)
+			Vector3 chunkPosition = WorldToChunkPosition(Vector3(x, 0, z));
+			auto chunk = GetChunk(chunkPosition);
+			if (!chunk)
 			{
-				Vector3 chunkPosition = WorldToChunkPosition(Vector3(x, y, z));
-				auto chunk = GetChunk(chunkPosition);
-				if (!chunk)
+				std::array<Chunk, CHUNK_Y_COUNT> chunkArray;
+				for (int sy = 0; sy < CHUNK_Y_COUNT; ++sy)
 				{
-					std::array<Chunk, CHUNK_Y_COUNT> chunkArray;
-					for (int sy = 0; sy < CHUNK_Y_COUNT; ++sy)
-					{
-						chunkArray[sy] = Chunk(this, Vector3(chunkPosition.x, sy, chunkPosition.z));
-					}
-					m_chunks.insert_or_assign(HashChunkPosition(chunkPosition), std::move(chunkArray));
-					chunk = GetChunk(chunkPosition);
+					chunkArray[sy] = Chunk(this, Vector3(chunkPosition.x, sy, chunkPosition.z));
 				}
+				m_chunks.insert_or_assign(HashChunkPosition(chunkPosition), std::move(chunkArray));
+				chunk = GetChunk(chunkPosition);
+			}
 
-				BlockId type = EMPTY;
-				if (y < 60) type = GRASS;
-				if (y < 59) type = DIRT;
-				if (y < 50) type = STONE;
-				if (y < 20) type = BEDROCK;
-				*chunk->GetBlock(Vector3(x, y, z)) = type;
+
+			int start = 40;
+			int height = 40;
+
+			int waterLevel = 60;
+
+			const int noise = start + perlin.octave2D_01((x * 0.01), (z * 0.01), 4) * height;
+			
+			//
+			// BlockId type = EMPTY;
+			// if (y < 60) type = GRASS;
+			// if (y < 59) type = DIRT;
+			// if (y < 50) type = STONE;
+			// if (y < 20) type = BEDROCK;
+			for (int y = 0; y < noise; ++y)
+			{
+				Chunk* currentChunk = GetChunk(WorldToChunkPosition(Vector3(x, y, z)));
+				*currentChunk->GetBlock(Vector3(x, y, z)) = y < 30 ? STONE : DIRT;
+			}
+			for (int y = noise; y <= waterLevel; ++y)
+			{
+				Chunk* currentChunk = GetChunk(WorldToChunkPosition(Vector3(x, y, z)));
+				*currentChunk->GetBlock(Vector3(x, y, z)) = WATER;
+			}
+			if (noise >= waterLevel)
+			{
+				Chunk* currentChunk = GetChunk(WorldToChunkPosition(Vector3(x, noise, z)));
+				*currentChunk->GetBlock(Vector3(x, noise, z)) = GRASS;
 			}
 		}
 	}
