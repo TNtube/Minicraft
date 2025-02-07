@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Engine/BlendState.h"
+#include "Engine/DepthState.h"
 #include "Engine/DeviceResources.h"
 #include "Engine/StepTimer.h"
 #include "Engine/Texture.h"
@@ -55,5 +57,10 @@ private:
 	World									m_world;
 	Texture									m_texture;
 
-	ComPtr<ID3D11BlendState> Transparency;
+	std::unique_ptr<BlendState>				m_bsTransparency;
+	std::unique_ptr<BlendState>				m_bsDefault;
+
+
+	std::unique_ptr<DepthState>				m_dsDefault;
+	std::unique_ptr<DepthState>				m_dsNoWrite;
 };

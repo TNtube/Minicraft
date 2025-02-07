@@ -59,7 +59,7 @@ void World::Generate(DeviceResources* deviceResources)
 	// 	}
 	// }
 
-	constexpr int chunkCount = 8;
+	constexpr int chunkCount = 4;
 
 	siv::PerlinNoise perlin(1234);
 
@@ -97,7 +97,7 @@ void World::Generate(DeviceResources* deviceResources)
 			for (int y = 0; y < noise; ++y)
 			{
 				Chunk* currentChunk = GetChunk(WorldToChunkPosition(Vector3(x, y, z)));
-				*currentChunk->GetBlock(Vector3(x, y, z)) = y < 30 ? STONE : DIRT;
+				*currentChunk->GetBlock(Vector3(x, y, z)) = y < 30 ? STONE : GLASS;
 			}
 			for (int y = noise; y <= waterLevel; ++y)
 			{
@@ -124,7 +124,7 @@ void World::Generate(DeviceResources* deviceResources)
 	m_modelConstantBuffer.Create(deviceResources);
 }
 
-void World::Draw(DeviceResources* deviceResources)
+void World::Draw(DeviceResources* deviceResources, ShaderPass pass)
 {
 	for (auto& chunkArray : m_chunks)
 	{
@@ -134,7 +134,7 @@ void World::Draw(DeviceResources* deviceResources)
 			md.model = chunk.transform.GetTransformMatrix().Transpose();
 			m_modelConstantBuffer.UpdateSubResource(deviceResources, md);
 			m_modelConstantBuffer.Bind(deviceResources, 0);
-			chunk.Draw(deviceResources);
+			chunk.Draw(deviceResources, pass);
 		}
 	}
 }

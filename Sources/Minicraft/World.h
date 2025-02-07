@@ -10,7 +10,7 @@ public:
 	World(Vector3 dimension);
 
 	void Generate(DeviceResources* deviceResources);
-	void Draw(DeviceResources* deviceResources);
+	void Draw(DeviceResources* deviceResources, ShaderPass pass);
 
 	Chunk* GetChunk(Vector3 chunkPosition);
 

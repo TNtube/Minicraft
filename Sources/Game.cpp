@@ -63,26 +63,17 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	m_camera->SetPosition({0, 100, 10});
 
+	m_bsDefault = std::make_unique<BlendState>();
+	m_bsTransparency = std::make_unique<BlendState>(D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD);
 
-	D3D11_BLEND_DESC blendDesc;
-	ZeroMemory( &blendDesc, sizeof(blendDesc) );
+	m_bsDefault->Create(m_deviceResources.get());
+	m_bsTransparency->Create(m_deviceResources.get());
 
-	D3D11_RENDER_TARGET_BLEND_DESC rtbd;
-	ZeroMemory( &rtbd, sizeof(rtbd) );
+	m_dsDefault = std::make_unique<DepthState>();
+	m_dsNoWrite = std::make_unique<DepthState>(true, false);
 
-	rtbd.BlendEnable			= true;
-	rtbd.SrcBlend				= D3D11_BLEND_SRC_COLOR;
-	rtbd.DestBlend				= D3D11_BLEND_BLEND_FACTOR;
-	rtbd.BlendOp				= D3D11_BLEND_OP_ADD;
-	rtbd.SrcBlendAlpha			= D3D11_BLEND_ONE;
-	rtbd.DestBlendAlpha			= D3D11_BLEND_ZERO;
-	rtbd.BlendOpAlpha			= D3D11_BLEND_OP_ADD;
-	rtbd.RenderTargetWriteMask	= D3D10_COLOR_WRITE_ENABLE_ALL;
-
-	blendDesc.AlphaToCoverageEnable = false;
-	blendDesc.RenderTarget[0] = rtbd;
-
-	m_deviceResources->GetD3DDevice()->CreateBlendState(&blendDesc, Transparency.GetAddressOf());
+	m_dsDefault->Create(m_deviceResources.get());
+	m_dsNoWrite->Create(m_deviceResources.get());
 }
 
 void Game::Tick() {
@@ -138,14 +129,21 @@ void Game::Render(DX::StepTimer const& timer) {
 	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 
 	basicShader->Apply(m_deviceResources.get());
-	m_world.Draw(m_deviceResources.get());
 
 	m_camera->ApplyCamera(m_deviceResources.get());
 	m_texture.Apply(m_deviceResources.get());
 
-	context->DrawIndexed(indices.size(), 0, 0);
+	m_bsDefault->Apply(m_deviceResources.get());
+	m_dsDefault->Apply(m_deviceResources.get());
 
-	// envoie nos commandes au GPU pour etre afficher � l'�cran
+	m_world.Draw(m_deviceResources.get(), ShaderPass::Normal);
+
+	m_bsTransparency->Apply(m_deviceResources.get());
+	m_dsNoWrite->Apply(m_deviceResources.get());
+
+	m_world.Draw(m_deviceResources.get(), ShaderPass::Water);
+	m_world.Draw(m_deviceResources.get(), ShaderPass::Transparent);
+
 	m_deviceResources->Present();
 }
 

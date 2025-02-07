@@ -28,11 +28,11 @@ public:
 
 	
 	void Create(DeviceResources* deviceResources);
-	void Draw(DeviceResources* deviceResources);
+	void Draw(DeviceResources* deviceResources, ShaderPass pass);
 
 private:
 	friend class World;
-	void AddFace(Vector3 position, Vector3 up, Vector3 right, Vector2 textCoord);
+	void AddFace(Vector3 position, Vector3 up, Vector3 right, Vector2 textCoord, ShaderPass shaderPass);
 
 	bool ShouldRenderFace(Vector3 position, Vector3 direction, const BlockData& data) const;
 
@@ -40,8 +40,8 @@ private:
 
 	bool m_hasBlocks = false;
 	
-	VertexBuffer<VertexLayout_PositionUV> m_vertexBuffer;
-	IndexBuffer m_indexBuffer;
+	VertexBuffer<VertexLayout_PositionUV> m_vertexBuffer[ShaderPass::Size];
+	IndexBuffer m_indexBuffer[ShaderPass::Size];
 
 	Vector3 m_chunkPosition;
 
