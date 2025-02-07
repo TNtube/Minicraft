@@ -132,6 +132,7 @@ void World::Draw(DeviceResources* deviceResources, ShaderPass pass)
 		{
 			ModelData md;
 			md.model = chunk.transform.GetTransformMatrix().Transpose();
+			md.model = md.model.Invert().Transpose();
 			m_modelConstantBuffer.UpdateSubResource(deviceResources, md);
 			m_modelConstantBuffer.Bind(deviceResources, 0);
 			chunk.Draw(deviceResources, pass);

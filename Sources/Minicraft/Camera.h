@@ -21,6 +21,7 @@ class Camera {
 	struct MatrixData {
 		Matrix mView;
 		Matrix mProjection;
+		Vector4 camPos;
 	};
 	std::unique_ptr<ConstantBuffer<MatrixData>> cbCamera = nullptr;
 public:

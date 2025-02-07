@@ -32,7 +32,7 @@ public:
 
 private:
 	friend class World;
-	void AddFace(Vector3 position, Vector3 up, Vector3 right, Vector2 textCoord, ShaderPass shaderPass);
+	void AddFace(Vector3 position, Vector3 up, Vector3 right, Vector4 normal, Vector2 textCoord, ShaderPass shaderPass);
 
 	bool ShouldRenderFace(Vector3 position, Vector3 direction, const BlockData& data) const;
 
@@ -40,7 +40,7 @@ private:
 
 	bool m_hasBlocks = false;
 	
-	VertexBuffer<VertexLayout_PositionUV> m_vertexBuffer[ShaderPass::Size];
+	VertexBuffer<VertexLayout_PositionNormalUV> m_vertexBuffer[ShaderPass::Size];
 	IndexBuffer m_indexBuffer[ShaderPass::Size];
 
 	Vector3 m_chunkPosition;

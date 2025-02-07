@@ -71,6 +71,8 @@ void Camera::ApplyCamera(DeviceResources* deviceRes) {
 	MatrixData md;
 	md.mView = view.Transpose();
 	md.mProjection = projection.Transpose();
+	md.camPos = Vector4(camPos);
+	md.camPos.w = 1.0f;
 	cbCamera->UpdateSubResource(deviceRes, md);
 	cbCamera->Bind(deviceRes, 1);
 }

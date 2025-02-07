@@ -18,12 +18,6 @@ using namespace DirectX::SimpleMath;
 
 using Microsoft::WRL::ComPtr;
 
-struct CameraData
-{
-	Matrix view;
-	Matrix projection;
-};
-
 // Global stuff
 Shader* basicShader;
 
@@ -55,7 +49,7 @@ void Game::Initialize(HWND window, int width, int height) {
 	basicShader = new Shader(L"Basic");
 	basicShader->Create(m_deviceResources.get());
 
-	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
+	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), basicShader);
 	m_texture.Create(m_deviceResources.get());
 	m_world.Generate(m_deviceResources.get());
 
@@ -126,7 +120,7 @@ void Game::Render(DX::StepTimer const& timer) {
 	context->OMSetRenderTargets(1, &renderTarget, depthStencil);
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
+	ApplyInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get());
 
 	basicShader->Apply(m_deviceResources.get());
 

@@ -9,12 +9,14 @@ cbuffer CameraData : register(b1) {
 
 struct Input {
 	float4 pos : POSITION;
-	float2 uv : TEXCOORD;
+	float4 normal: NORMAL0;
+	float2 uv : TEXCOORD0;
 };
 
 struct Output {
 	float4 pos : SV_POSITION;
-	float2 uv : TEXCOORD;
+	float4 normal: NORMAL0;
+	float2 uv : TEXCOORD0;
 };
 
 Output main(Input input) {
@@ -22,6 +24,7 @@ Output main(Input input) {
 	output.pos = mul( input.pos, model );
 	output.pos = mul( output.pos, view );
 	output.pos = mul( output.pos, projection );
+	output.normal = input.normal;
 	output.uv = input.uv;
 
 	return output;

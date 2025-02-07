@@ -7,16 +7,16 @@ Vector4 ToVec4(Vector3 v)
 	return {v.x, v.y, v.z, 1.0f};
 }
 
-void Chunk::AddFace(Vector3 position, Vector3 up, Vector3 right, Vector2 textCoord, ShaderPass shaderPass)
+void Chunk::AddFace(Vector3 position, Vector3 up, Vector3 right, Vector4 normal, Vector2 textCoord, ShaderPass shaderPass)
 {
 	float u = textCoord.x / 16.0f;
 	float v = textCoord.y / 16.0f;
 	float one = 1.0f / 16.0f;
 	int pass = static_cast<int>(shaderPass);
-	auto a = m_vertexBuffer[pass].PushVertex({ToVec4(position), {u, v + one}});
-	auto b = m_vertexBuffer[pass].PushVertex({ToVec4(position + up), {u, v}});
-	auto c = m_vertexBuffer[pass].PushVertex({ToVec4(position+ right), { u + one, v + one}});
-	auto d = m_vertexBuffer[pass].PushVertex({ToVec4(position+ up + right), {u + one, v}});
+	auto a = m_vertexBuffer[pass].PushVertex({ToVec4(position), normal, {u, v + one}});
+	auto b = m_vertexBuffer[pass].PushVertex({ToVec4(position + up), normal, {u, v}});
+	auto c = m_vertexBuffer[pass].PushVertex({ToVec4(position+ right), normal, { u + one, v + one}});
+	auto d = m_vertexBuffer[pass].PushVertex({ToVec4(position+ up + right), normal, {u + one, v}});
 
 	m_indexBuffer[pass].PushTriangle(a, b, c);
 	m_indexBuffer[pass].PushTriangle(c, b, d);
@@ -71,7 +71,7 @@ void Chunk::Create(DeviceResources* deviceResources)
 	if (!m_hasBlocks)
 		return;
 	
-	std::vector<VertexLayout_PositionUV> vertices;
+	std::vector<VertexLayout_PositionNormalUV> vertices;
 	std::vector<uint32_t> indices;
 
 	for (int i = 0; i < m_blocks.size(); i++)
@@ -102,17 +102,17 @@ void Chunk::Create(DeviceResources* deviceResources)
 		Vector3 bottom =	Vector3{-0.5f, -0.5f, -0.5f};
 
 		if (ShouldRenderFace(blockPosition, Vector3::Backward, data))
-			AddFace(blockPosition + back, Vector3::Up, Vector3::Right, sideTexCoord, data.pass);
+			AddFace(blockPosition + back, Vector3::Up, Vector3::Right, {0.0f, 0.0f, 1.0f, 1.0f}, sideTexCoord, data.pass);
 		if (ShouldRenderFace(blockPosition, Vector3::Right, data))
-			AddFace(blockPosition + right, Vector3::Up, Vector3::Forward, sideTexCoord, data.pass);
+			AddFace(blockPosition + right, Vector3::Up, Vector3::Forward, {1.0f, 0.0f, 0.0f, 1.0f}, sideTexCoord, data.pass);
 		if (ShouldRenderFace(blockPosition, Vector3::Forward, data))
-			AddFace(blockPosition + front, Vector3::Up, Vector3::Left, sideTexCoord, data.pass);
+			AddFace(blockPosition + front, Vector3::Up, Vector3::Left, {0.0f, 0.0f, -1.0f, 1.0f}, sideTexCoord, data.pass);
 		if (ShouldRenderFace(blockPosition, Vector3::Left, data))
-			AddFace(blockPosition + left, Vector3::Up, Vector3::Backward, sideTexCoord, data.pass);
+			AddFace(blockPosition + left, Vector3::Up, Vector3::Backward, {-1.0f, 0.0f, 0.0f, 1.0f}, sideTexCoord, data.pass);
 		if (ShouldRenderFace(blockPosition, Vector3::Up, data))
-			AddFace(blockPosition + top, Vector3::Forward, Vector3::Right, topTexCoord, data.pass);
+			AddFace(blockPosition + top, Vector3::Forward, Vector3::Right, {0.0f, 1.0f, 0.0f, 1.0f}, topTexCoord, data.pass);
 		if (ShouldRenderFace(blockPosition, Vector3::Down, data))
-			AddFace(blockPosition + bottom, Vector3::Backward, Vector3::Right, bottomTexCoord, data.pass);
+			AddFace(blockPosition + bottom, Vector3::Backward, Vector3::Right, {0.0f, -1.0f, 0.0f, 1.0f}, bottomTexCoord, data.pass);
 		
 		// AddFace({-0.5f, -0.5f, 0.5f}, Vector3::Up, Vector3::Right, sideTexCoord);					// front
 		// AddFace({0.5f,  -0.5f, 0.5f}, Vector3::Up, Vector3::Forward, sideTexCoord);			// back
