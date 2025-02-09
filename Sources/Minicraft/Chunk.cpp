@@ -20,6 +20,7 @@ void Chunk::AddFace(Vector3 position, Vector3 up, Vector3 right, Vector4 normal,
 
 	m_indexBuffer[pass].PushTriangle(a, b, c);
 	m_indexBuffer[pass].PushTriangle(c, b, d);
+	m_hasBlocks[pass] = true;
 }
 
 bool Chunk::ShouldRenderFace(Vector3 position, Vector3 direction, const BlockData& data) const
@@ -67,9 +68,12 @@ const BlockId* Chunk::GetBlock(Vector3 worldPosition) const
 
 void Chunk::Create(DeviceResources* deviceResources)
 {
-	m_hasBlocks = std::any_of(m_blocks.begin(), m_blocks.end(), [](BlockId id) { return id != EMPTY; });
-	if (!m_hasBlocks)
+	bool hasBlocks = std::any_of(m_blocks.begin(), m_blocks.end(), [](BlockId id) { return id != EMPTY; });
+	std::fill_n(m_hasBlocks, static_cast<int>(ShaderPass::Size), hasBlocks);
+	if (!hasBlocks)
 		return;
+
+	std::fill_n(m_hasBlocks, static_cast<int>(ShaderPass::Size), false);
 	
 	std::vector<VertexLayout_PositionNormalUV> vertices;
 	std::vector<uint32_t> indices;
@@ -124,6 +128,8 @@ void Chunk::Create(DeviceResources* deviceResources)
 
 	for (int i = 0; i < static_cast<int>(ShaderPass::Size); ++i)
 	{
+		if (!m_hasBlocks[i])
+			continue;
 		m_vertexBuffer[i].Create(deviceResources);
 		m_indexBuffer[i].Create(deviceResources);
 	}
@@ -131,12 +137,12 @@ void Chunk::Create(DeviceResources* deviceResources)
 
 void Chunk::Draw(DeviceResources* deviceResources, ShaderPass shaderPass)
 {
-	if (!m_hasBlocks)
+	int pass = static_cast<int>(shaderPass);
+	if (!m_hasBlocks[pass])
 		return;
 
 	auto d3dContext = deviceResources->GetD3DDeviceContext();
 
-	int pass = static_cast<int>(shaderPass);
 
 	m_vertexBuffer[pass].Bind(deviceResources);
 	m_indexBuffer[pass].Bind(deviceResources);

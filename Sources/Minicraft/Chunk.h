@@ -37,11 +37,10 @@ private:
 	bool ShouldRenderFace(Vector3 position, Vector3 direction, const BlockData& data) const;
 
 	World* m_world;
-
-	bool m_hasBlocks = false;
 	
 	VertexBuffer<VertexLayout_PositionNormalUV> m_vertexBuffer[ShaderPass::Size];
 	IndexBuffer m_indexBuffer[ShaderPass::Size];
+	bool m_hasBlocks[ShaderPass::Size];
 
 	Vector3 m_chunkPosition;
 
